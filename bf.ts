@@ -1,5 +1,10 @@
 import type { Tape, Prev, Next, Incr, Decr, PutC } from "./tape.ts";
-import type { NumberToChar, CharToNumber } from "./maps.ts";
+import type {
+  DecrementMap,
+  IncrementMap,
+  NumberToChar,
+  CharToNumber,
+} from "./maps.ts";
 
 type Inst = "+" | "-" | ">" | "<" | "[" | "]" | "." | "," | "#";
 
@@ -33,7 +38,8 @@ type Init<Program extends string, Input extends string> = Runner<
   ""
 >;
 
-type Skip<R> =
+// prettier-ignore
+type Skip<R, N extends number = 0> =
   R extends Runner<
     infer M extends Tape<unknown[], number, unknown[]>,
     infer P extends Tape<unknown[], string, unknown[]>,
@@ -41,11 +47,16 @@ type Skip<R> =
     infer O extends string
   >
     ? P["curr"] extends "]"
-      ? R
-      : Skip<Runner<M, Next<P>, I, O>>
+      ? N extends 0
+        ? R
+        : Skip<Runner<M, Next<P>, I, O>, DecrementMap[N]>
+    : P["curr"] extends "["
+      ? Skip<Runner<M, Next<P>, I, O>, IncrementMap[N]>
+      : Skip<Runner<M, Next<P>, I, O>, N>
     : never;
 
-type Back<R> =
+// prettier-ignore
+type Back<R, N extends number = 0> =
   R extends Runner<
     infer M extends Tape<unknown[], number, unknown[]>,
     infer P extends Tape<unknown[], string, unknown[]>,
@@ -53,8 +64,12 @@ type Back<R> =
     infer O extends string
   >
     ? P["curr"] extends "["
-      ? R
-      : Back<Runner<M, Prev<P>, I, O>>
+      ? N extends 0
+        ? R
+        : Back<Runner<M, Prev<P>, I, O>, DecrementMap[N]>
+    : P["curr"] extends "]"
+      ? Back<Runner<M, Prev<P>, I, O>, IncrementMap[N]>
+      : Back<Runner<M, Prev<P>, I, O>, N>
     : never;
 
 // prettier-ignore
@@ -71,16 +86,16 @@ type Step<R> =
     : P['curr'] extends "<" ? Runner<Prev<M>, Next<P>, I, O>
     : P['curr'] extends "["
       ? M['curr'] extends 0
-        ? Skip<R>
+        ? Skip<Runner<M, Next<P>, I, O>, 0>
         : Runner<M, Next<P>, I, O>
     : P['curr'] extends "]"
       ? M['curr'] extends 0
         ? Runner<M, Next<P>, I, O>
-        : Back<R>
+        : Back<Runner<M, Prev<P>, I, O>, 0>
     : P['curr'] extends "." ? Runner<M, Next<P>, I, `${O}${NumberToChar[M['curr']]}`>
     : P['curr'] extends ","
-      ? I extends `${infer F}${infer R}`
-        ? Runner<PutC<M, CharToNumber[F]>, Next<P>, R, O>
+      ? I extends `${infer F}${infer Rs}`
+        ? Runner<PutC<M, CharToNumber[F]>, Next<P>, Rs, O>
         : never
     : P['curr'] extends "#" ? O
     : /* else */ never
