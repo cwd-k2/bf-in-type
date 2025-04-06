@@ -9,11 +9,9 @@ import type {
 type Inst = "+" | "-" | ">" | "<" | "[" | "]" | "." | "," | "#";
 
 type Make<
-  S extends string,
+  N extends number,
   M extends number[],
-> = S extends `${string}${infer R}` ? Make<R, [...M, ...M]> : M;
-
-type Mem0 = Make<"............", [0, 0]>;
+> = N extends 0 ? M : Make<DecrementMap[N], [...M, ...M]>;
 
 type Code<
   S extends string,
@@ -32,14 +30,14 @@ type Runner<M, P, I, O> = {
 };
 
 type Init<Program extends string, Input extends string> = Runner<
-  Next<Tape<[], 0, Mem0>>,
+  Tape<[], 0, Make<12, [0, 0]>>,
   Next<Tape<[], "#", Code<`${Program}#`>>>,
   Input,
   ""
 >;
 
 // prettier-ignore
-type Skip<R, N extends number = 0> =
+type Skip<R, N extends number> =
   R extends Runner<
     infer M extends Tape<unknown[], number, unknown[]>,
     infer P extends Tape<unknown[], string, unknown[]>,
@@ -56,7 +54,7 @@ type Skip<R, N extends number = 0> =
     : never;
 
 // prettier-ignore
-type Back<R, N extends number = 0> =
+type Back<R, N extends number> =
   R extends Runner<
     infer M extends Tape<unknown[], number, unknown[]>,
     infer P extends Tape<unknown[], string, unknown[]>,
@@ -94,8 +92,8 @@ type Step<R> =
         : Back<Runner<M, Prev<P>, I, O>, 0>
     : P['curr'] extends "." ? Runner<M, Next<P>, I, `${O}${NumberToChar[M['curr']]}`>
     : P['curr'] extends ","
-      ? I extends `${infer F}${infer Rs}`
-        ? Runner<PutC<M, CharToNumber[F]>, Next<P>, Rs, O>
+      ? I extends `${infer C}${infer S}`
+        ? Runner<PutC<M, CharToNumber[C]>, Next<P>, S, O>
         : never
     : P['curr'] extends "#" ? O
     : /* else */ never
