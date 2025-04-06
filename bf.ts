@@ -2,17 +2,21 @@ import type { Tape, Prev, Next, Incr, Decr, PutC } from "./tape.ts";
 import type {
   DecrementMap,
   IncrementMap,
-  NumberToChar,
-  CharToNumber,
+  NumToCharMap,
+  CharToNumMap,
 } from "./maps.ts";
 
-type Inst = "+" | "-" | ">" | "<" | "[" | "]" | "." | "," | "#";
+type Inst = "+" | "-" | ">" | "<" | "[" | "]" | "." | ",";
 
+// prettier-ignore
 type Make<
   N extends number,
-  M extends number[],
-> = N extends 0 ? M : Make<DecrementMap[N], [...M, ...M]>;
+  M extends unknown[] = [0]
+> = N extends 0
+  ? M
+  : Make<DecrementMap[N], [...M, ...M]>;
 
+// prettier-ignore
 type Code<
   S extends string,
   O extends Inst[] = [],
@@ -29,18 +33,33 @@ type Runner<M, P, I, O> = {
   out: O;
 };
 
-type Init<Program extends string, Input extends string> = Runner<
-  Tape<[], 0, Make<12, [0, 0]>>,
-  Next<Tape<[], "#", Code<`${Program}#`>>>,
-  Input,
+type TapeMm = Tape<number[], number, number[]>;
+type TapePg = Tape<string[], string, string[]>;
+// prettier-ignore
+type MakeMm<N extends number> =
+  Tape<Make<N>, 0, Make<N>>;
+// prettier-ignore
+type MakePg<P extends string> =
+  Code<P> extends [infer C, ...infer S]
+    ? Tape<["#"], C, [...S, "#"]>
+    : never;
+
+// prettier-ignore
+type Init<
+  P extends string,
+  I extends string
+> = Runner<
+  MakeMm<9>, // too small but for the limitations
+  MakePg<P>,
+  I,
   ""
 >;
 
 // prettier-ignore
 type Skip<R, N extends number> =
   R extends Runner<
-    infer M extends Tape<unknown[], number, unknown[]>,
-    infer P extends Tape<unknown[], string, unknown[]>,
+    infer M extends TapeMm,
+    infer P extends TapePg,
     infer I extends string,
     infer O extends string
   >
@@ -50,14 +69,14 @@ type Skip<R, N extends number> =
         : Skip<Runner<M, Next<P>, I, O>, DecrementMap[N]>
     : P["curr"] extends "["
       ? Skip<Runner<M, Next<P>, I, O>, IncrementMap[N]>
-      : Skip<Runner<M, Next<P>, I, O>, N>
-    : never;
+    : /* else */ Skip<Runner<M, Next<P>, I, O>, N>
+  : never;
 
 // prettier-ignore
 type Back<R, N extends number> =
   R extends Runner<
-    infer M extends Tape<unknown[], number, unknown[]>,
-    infer P extends Tape<unknown[], string, unknown[]>,
+    infer M extends TapeMm,
+    infer P extends TapePg,
     infer I extends string,
     infer O extends string
   >
@@ -67,14 +86,14 @@ type Back<R, N extends number> =
         : Back<Runner<M, Prev<P>, I, O>, DecrementMap[N]>
     : P["curr"] extends "]"
       ? Back<Runner<M, Prev<P>, I, O>, IncrementMap[N]>
-      : Back<Runner<M, Prev<P>, I, O>, N>
-    : never;
+    : /* else */ Back<Runner<M, Prev<P>, I, O>, N>
+  : never;
 
 // prettier-ignore
 type Step<R> =
   R extends Runner<
-    infer M extends Tape<unknown[], number, unknown[]>,
-    infer P extends Tape<unknown[], string, unknown[]>,
+    infer M extends TapeMm,
+    infer P extends TapePg,
     infer I extends string,
     infer O extends string
   >
@@ -90,15 +109,24 @@ type Step<R> =
       ? M['curr'] extends 0
         ? Runner<M, Next<P>, I, O>
         : Back<Runner<M, Prev<P>, I, O>, 0>
-    : P['curr'] extends "." ? Runner<M, Next<P>, I, `${O}${NumberToChar[M['curr']]}`>
+    : P['curr'] extends "."
+      ? Runner<M, Next<P>, I, `${O}${NumToCharMap[M['curr']]}`>
     : P['curr'] extends ","
       ? I extends `${infer C}${infer S}`
-        ? Runner<PutC<M, CharToNumber[C]>, Next<P>, S, O>
+        ? Runner<PutC<M, CharToNumMap[C]>, Next<P>, S, O>
         : never
-    : P['curr'] extends "#" ? O
-    : /* else */ never
+    : /* else */ O
   : never;
 
-type Exec<R> = R extends string ? R : Exec<Step<R>>;
+// prettier-ignore
+type Exec<R> =
+  R extends Runner<TapeMm, TapePg, string, string>
+    ? Exec<Step<R>>
+    : R;
 
-export type BF<S extends string, I extends string = ""> = Exec<Init<S, I>>;
+// prettier-ignore
+export type BF<
+  S extends string,
+  I extends string = ""
+> =
+  Exec<Init<S, I>>;
