@@ -7,13 +7,13 @@ export type Tape<Hs extends unknown[], C, Ts extends unknown[]> = {
 };
 
 export type Prev<M> =
-  M extends Tape<[...infer Hs, infer H], infer C, infer Ts>
+  M extends Tape<[infer H, ...infer Hs], infer C, infer Ts>
     ? Tape<Hs, H, [C, ...Ts]>
     : never;
 
 export type Next<M> =
   M extends Tape<infer Hs, infer C, [infer T, ...infer Ts]>
-    ? Tape<[...Hs, C], T, Ts>
+    ? Tape<[C, ...Hs], T, Ts>
     : never;
 
 export type Incr<M> =
