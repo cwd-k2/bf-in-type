@@ -1,9 +1,9 @@
 import type { IncrementMap, DecrementMap } from "./maps.ts";
 
 export type Tape<Hs extends unknown[], C, Ts extends unknown[]> = {
-  head: Hs;
-  curr: C;
-  tail: Ts;
+  h: Hs;
+  c: C;
+  t: Ts;
 };
 
 export type Prev<M> =

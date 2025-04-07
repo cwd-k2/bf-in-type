@@ -63,11 +63,11 @@ type Skip<R, N extends number> =
     infer I extends string,
     infer O extends string
   >
-    ? P["curr"] extends "]"
+    ? P["c"] extends "]"
       ? N extends 0
         ? R
         : Skip<Runner<M, Next<P>, I, O>, DecrementMap[N]>
-    : P["curr"] extends "["
+    : P["c"] extends "["
       ? Skip<Runner<M, Next<P>, I, O>, IncrementMap[N]>
     : /* else */ Skip<Runner<M, Next<P>, I, O>, N>
   : never;
@@ -80,11 +80,11 @@ type Back<R, N extends number> =
     infer I extends string,
     infer O extends string
   >
-    ? P["curr"] extends "["
+    ? P["c"] extends "["
       ? N extends 0
         ? R
         : Back<Runner<M, Prev<P>, I, O>, DecrementMap[N]>
-    : P["curr"] extends "]"
+    : P["c"] extends "]"
       ? Back<Runner<M, Prev<P>, I, O>, IncrementMap[N]>
     : /* else */ Back<Runner<M, Prev<P>, I, O>, N>
   : never;
@@ -97,21 +97,21 @@ type Step<R> =
     infer I extends string,
     infer O extends string
   >
-    ? P['curr'] extends "+" ? Runner<Incr<M>, Next<P>, I, O>
-    : P['curr'] extends "-" ? Runner<Decr<M>, Next<P>, I, O>
-    : P['curr'] extends ">" ? Runner<Next<M>, Next<P>, I, O>
-    : P['curr'] extends "<" ? Runner<Prev<M>, Next<P>, I, O>
-    : P['curr'] extends "["
-      ? M['curr'] extends 0
+    ? P['c'] extends "+" ? Runner<Incr<M>, Next<P>, I, O>
+    : P['c'] extends "-" ? Runner<Decr<M>, Next<P>, I, O>
+    : P['c'] extends ">" ? Runner<Next<M>, Next<P>, I, O>
+    : P['c'] extends "<" ? Runner<Prev<M>, Next<P>, I, O>
+    : P['c'] extends "["
+      ? M['c'] extends 0
         ? Skip<Runner<M, Next<P>, I, O>, 0>
         : Runner<M, Next<P>, I, O>
-    : P['curr'] extends "]"
-      ? M['curr'] extends 0
+    : P['c'] extends "]"
+      ? M['c'] extends 0
         ? Runner<M, Next<P>, I, O>
         : Back<Runner<M, Prev<P>, I, O>, 0>
-    : P['curr'] extends "."
-      ? Runner<M, Next<P>, I, `${O}${NumToCharMap[M['curr']]}`>
-    : P['curr'] extends ","
+    : P['c'] extends "."
+      ? Runner<M, Next<P>, I, `${O}${NumToCharMap[M['c']]}`>
+    : P['c'] extends ","
       ? I extends `${infer C}${infer S}`
         ? Runner<PutC<M, CharToNumMap[C]>, Next<P>, S, O>
         : never
