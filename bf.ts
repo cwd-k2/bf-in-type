@@ -11,7 +11,7 @@ type Inst = "+" | "-" | ">" | "<" | "[" | "]" | "." | ",";
 // prettier-ignore
 type Make<
   N extends number,
-  M extends unknown[] = [0]
+  M extends number[] = [0]
 > = N extends 0
   ? M
   : Make<DecrementMap[N], [...M, ...M]>;
