@@ -12,20 +12,24 @@ type TapeMm = Tape<number[], number, number[]>;
 type TapePg = Tape<string[], string, string[]>;
 
 // prettier-ignore
-type Skip<P extends TapePg, N extends number = 0>
-  = P['c'] extends ']'
-    ? N extends 0 ? P : Skip<Next<P>, DecrementMap[N]>
-  : P['c'] extends '['
-    ? Skip<Next<P>, IncrementMap[N]>
-  : Skip<Next<P>, N>;
+type Skip<P, N extends number = 0> =
+  Next<P> extends infer V extends TapePg
+    ? V['c'] extends ']'
+      ? N extends 0 ? V : Skip<V, DecrementMap[N]>
+    : V['c'] extends '['
+      ? Skip<V, IncrementMap[N]>
+    : Skip<V, N>
+  : never;
 
 // prettier-ignore
-type Back<P extends TapePg, N extends number = 0>
-  = P['c'] extends '['
-    ? N extends 0 ? P : Back<Prev<P>, DecrementMap[N]>
-  : P['c'] extends ']'
-    ? Back<Prev<P>, IncrementMap[N]>
-  : Back<Prev<P>, N>;
+type Back<P, N extends number = 0> =
+  Prev<P> extends infer V extends TapePg
+    ? V['c'] extends '['
+      ? N extends 0 ? V : Back<V, DecrementMap[N]>
+    : V['c'] extends ']'
+      ? Back<V, IncrementMap[N]>
+    : Back<V, N>
+  : never;
 
 type Runner<M, P> = {
   mem: M;
@@ -56,12 +60,12 @@ type Step<R> =
     : P['c'] extends '-' ? StateN<Runner<Decr<M>, Next<P>>>
     : P['c'] extends '>' ? StateN<Runner<Next<M>, Next<P>>>
     : P['c'] extends '<' ? StateN<Runner<Prev<M>, Next<P>>>
-    : P['c'] extends '[' ? StateN<Runner<M, M['c'] extends 0 ? Skip<Next<P>> : Next<P>>>
-    : P['c'] extends ']' ? StateN<Runner<M, M['c'] extends 0 ? Next<P> : Back<Prev<P>>>>
+    : P['c'] extends '[' ? StateN<Runner<M, M['c'] extends 0 ? Skip<P> : Next<P>>>
+    : P['c'] extends ']' ? StateN<Runner<M, M['c'] extends 0 ? Next<P> : Back<P>>>
     : P['c'] extends '.' ? StateO<Runner<M, Next<P>>, M['c']>
     : P['c'] extends ',' ? StateI<Runner<M, Next<P>>>
     : StateE
-  : StateE;
+  : never;
 
 // prettier-ignore
 type Exec<
@@ -70,14 +74,14 @@ type Exec<
   O extends string = ''
 > =
   Step<R> extends infer StateR
-    ? StateR extends StateN<infer RR>
-      ? Exec<RR, I, O>
-    : StateR extends StateI<infer RR>
+    ? StateR extends StateN<infer Q>
+      ? Exec<Q, I, O>
+    : StateR extends StateI<infer Q>
       ? I extends `${infer F}${infer S}`
-        ? Exec<Read<RR, CharToNumMap[F]>, S, O>
-        : Exec<Read<RR, 0>, I, O>
-    : StateR extends StateO<infer RR, infer RO extends number>
-      ? Exec<RR, I, `${O}${NumToCharMap[RO]}`>
+        ? Exec<Read<Q, CharToNumMap[F]>, S, O>
+        : Exec<Read<Q, 0>, I, O>
+    : StateR extends StateO<infer Q, infer N extends number>
+      ? Exec<Q, I, `${O}${NumToCharMap[N]}`>
     : StateR extends StateE
       ? O
     : never
