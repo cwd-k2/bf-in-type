@@ -1,4 +1,4 @@
-import type { IncrementMap, DecrementMap } from "./maps.ts";
+import type { IncrementMap, DecrementMap } from './maps.ts';
 
 export type Tape<Hs extends unknown[], C, Ts extends unknown[]> = {
   h: Hs;
