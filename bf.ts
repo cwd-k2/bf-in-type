@@ -8,6 +8,24 @@ import type {
 
 type Inst = '+' | '-' | '>' | '<' | '[' | ']' | '.' | ',';
 
+// prettier-ignore
+type ZerosN<
+  N extends number,
+  M extends number[] = [0]
+> = N extends 0
+  ? M
+  : ZerosN<DecrementMap[N], [...M, ...M]>;
+
+// prettier-ignore
+type FromString<
+  S extends string,
+  O extends Inst[] = [],
+> = S extends `${infer F}${infer R}`
+  ? F extends Inst
+    ? FromString<R, [...O, F]>
+    : FromString<R, O>
+  : O;
+
 type TapeMm = Tape<number[], number, number[]>;
 type TapePg = Tape<string[], string, string[]>;
 
@@ -36,10 +54,10 @@ type Runner<M, P> = {
   prg: P;
 };
 
-type StateN<R> = { state: 'N'; runner: R };
-type StateI<R> = { state: 'I'; runner: R };
-type StateO<R, O> = { state: 'O'; runner: R; output: O };
-type StateE = { state: 'E' };
+type ActionN<R> = { action: 'N'; runner: R };
+type ActionI<R> = { action: 'I'; runner: R };
+type ActionO<R, O> = { action: 'O'; runner: R; output: O };
+type ActionE = { action: 'E' };
 
 // prettier-ignore
 type Read<R, C extends number> =
@@ -56,15 +74,15 @@ type Step<R> =
     infer M extends TapeMm,
     infer P extends TapePg
   >
-    ? P['c'] extends '+' ? StateN<Runner<Incr<M>, Next<P>>>
-    : P['c'] extends '-' ? StateN<Runner<Decr<M>, Next<P>>>
-    : P['c'] extends '>' ? StateN<Runner<Next<M>, Next<P>>>
-    : P['c'] extends '<' ? StateN<Runner<Prev<M>, Next<P>>>
-    : P['c'] extends '[' ? StateN<Runner<M, M['c'] extends 0 ? Skip<P> : Next<P>>>
-    : P['c'] extends ']' ? StateN<Runner<M, M['c'] extends 0 ? Next<P> : Back<P>>>
-    : P['c'] extends '.' ? StateO<Runner<M, Next<P>>, M['c']>
-    : P['c'] extends ',' ? StateI<Runner<M, Next<P>>>
-    : StateE
+    ? P['c'] extends '+' ? ActionN<Runner<Incr<M>, Next<P>>>
+    : P['c'] extends '-' ? ActionN<Runner<Decr<M>, Next<P>>>
+    : P['c'] extends '>' ? ActionN<Runner<Next<M>, Next<P>>>
+    : P['c'] extends '<' ? ActionN<Runner<Prev<M>, Next<P>>>
+    : P['c'] extends '[' ? ActionN<Runner<M, M['c'] extends 0 ? Skip<P> : Next<P>>>
+    : P['c'] extends ']' ? ActionN<Runner<M, M['c'] extends 0 ? Next<P> : Back<P>>>
+    : P['c'] extends '.' ? ActionO<Runner<M, Next<P>>, M['c']>
+    : P['c'] extends ',' ? ActionI<Runner<M, Next<P>>>
+    : ActionE
   : never;
 
 // prettier-ignore
@@ -73,37 +91,19 @@ type Exec<
   I extends string,
   O extends string = ''
 > =
-  Step<R> extends infer StateR
-    ? StateR extends StateN<infer Q>
+  Step<R> extends infer WithAction
+    ? WithAction extends ActionN<infer Q>
       ? Exec<Q, I, O>
-    : StateR extends StateI<infer Q>
+    : WithAction extends ActionI<infer Q>
       ? I extends `${infer F}${infer S}`
         ? Exec<Read<Q, CharToNumMap[F]>, S, O>
         : Exec<Read<Q, 0>, I, O>
-    : StateR extends StateO<infer Q, infer N extends number>
+    : WithAction extends ActionO<infer Q, infer N extends number>
       ? Exec<Q, I, `${O}${NumToCharMap[N]}`>
-    : StateR extends StateE
+    : WithAction extends ActionE
       ? O
     : never
   : never;
-
-// prettier-ignore
-type ZerosN<
-  N extends number,
-  M extends number[] = [0]
-> = N extends 0
-  ? M
-  : ZerosN<DecrementMap[N], [...M, ...M]>;
-
-// prettier-ignore
-type ToCode<
-  S extends string,
-  O extends Inst[] = [],
-> = S extends `${infer F}${infer R}`
-  ? F extends Inst
-    ? ToCode<R, [...O, F]>
-    : ToCode<R, O>
-  : O;
 
 // prettier-ignore
 type MakeMm<N extends number> =
@@ -111,7 +111,7 @@ type MakeMm<N extends number> =
 
 // prettier-ignore
 type MakePg<P extends string> =
-  ToCode<P> extends [infer C, ...infer S]
+  FromString<P> extends [infer C, ...infer S]
     ? Tape<['#'], C, [...S, '#']>
     : Tape<['#'], '#', ['#']>;
 
